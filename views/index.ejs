@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Stock Price list</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css' />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js" integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw==" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous" />
+  </head>
+  <body>
+    <div class="row col-12">
+      <div class="col-4">
+        <div class="panel panel-info">
+          <div class="panel-heading btn-info">Stocks</div>
+          <div class="panel-body">            
+            <table class="table">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Value</th>
+                  <th scope="col">History</th>
+                  <th scope="col">Updated At</th>
+                </tr>
+              </thead>
+              <tbody id="tblbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-8">
+        <div class="panel panel-info">
+          <div class="panel-heading btn-info">Graph</div>
+          <div class="panel-body">            
+            <canvas id="myChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+        let exporteddata=drawchart();
+        setInterval(updatedata,5000);
+        function updatedata(){
+          exporteddata.typo.data.datasets.forEach((dataset) => {
+            exporteddata.typo.data.labels.push(new Date().toLocaleString('en-US', { hour: 'numeric',minute: 'numeric',second: 'numeric', hour12: true }));
+            dataset.data.push(Math.random()*55);
+          });
+          exporteddata.myNewChart.update();
+        }
+        function initialtime(){
+          return new Date().toLocaleString('en-US', { hour: 'numeric',minute: 'numeric',second: 'numeric', hour12: true });
+        }
+
+        fetch("https://financialmodelingprep.com/api/v3/actives?apikey=f832d1c18d03df428691fd6acaeff058").then(function(response) {
+          return response.json();
+        }).then(function(data) {
+          console.log(data);
+          var tr="";
+          data.forEach(element => {
+            let cls='btn-danger';
+            if(element.changesPercentage.includes('+')){
+              cls='btn-success';
+            }
+            tr+="<tr onclick=renderChart('"+element.ticker+"')><td>"+element.companyName+"</td><td class="+cls+">"+element.changesPercentage+"</td><td><i class='fas fa-chart-area'></i></td><td>"+element.price+"</td></tr>"
+          });
+          document.getElementById("tblbody").innerHTML=tr;
+        }).catch(function(e) {
+          console.log("error occured.."+e);
+        });
+        function renderChart(tickerdata){
+          let tickerinfo=localStorage.getItem('ticker');
+          localStorage.setItem('ticker',tickerdata);
+          if(tickerinfo!=tickerdata){
+            exporteddata.typo.data.datasets.forEach((dataset) => {
+              dataset.label=tickerdata;
+              exporteddata.typo.data.labels.push(new Date().toLocaleString('en-US', { hour: 'numeric',minute: 'numeric',second: 'numeric', hour12: true }));
+              dataset.data.push(Math.random()*(Math.random()*45));
+            });
+            exporteddata.myNewChart.update();
+          }
+        }
+        function drawchart(){
+          var data = {
+            labels: [initialtime(),initialtime(),initialtime(),initialtime(),initialtime()],
+            datasets: [
+                {
+                    label: "BRK-A",
+                    fill: false,
+                    borderColor: '#FF0000',
+                    backgroundColor: '#FF0000',
+                    data: <%= chartData %>
+                }
+            ]
+        };
+
+        var ctx = document.getElementById("myChart").getContext("2d");
+        var typo={type: 'line',data: data}
+        var myNewChart = new Chart(ctx,typo);
+        return {typo,myNewChart};
+        }
+    </script>
+  </body>
+</html>
