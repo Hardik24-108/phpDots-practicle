@@ -6,6 +6,7 @@
     <link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css' />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js" integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw==" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous" />
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.10/lodash.min.js"></script>
   </head>
   <body>
     <div class="row col-12">
@@ -28,7 +29,36 @@
         </div>
       </div>
       <div class="col-8">
-        <div class="panel panel-info">
+        <div class="col-12 row">
+          <div class="col-5">
+            <select class="form-control" id="month" name="month">
+              <option value='0'>Janaury</option>
+              <option value='1'>February</option>
+              <option value='2'>March</option>
+              <option value='3'>April</option>
+              <option value='4'>May</option>
+              <option value='5'>June</option>
+              <option value='6'>July</option>
+              <option value='7'>August</option>
+              <option value='8'>September</option>
+              <option value='9'>October</option>
+              <option value='10'>November</option>
+              <option value='11'>December</option>
+            </select>
+          </div>
+          <div class="col-5">
+          <select class="form-control" id="year" name="year">
+            <option value="2016">2016</option>
+            <option value="2017">2017</option>
+            <option value="2018">2018</option>
+            <option value="2019">2019</option>
+            <option value="2020">2020</option>
+            <option value="2021">2021</option>
+          </select>
+          </div>
+          <button class="btn btn-info" type="button" onclick="FilterData()">Filter</button>
+        </div>
+        <div class="panel panel-info mt-5">
           <div class="panel-heading btn-info">Graph</div>
           <div class="panel-body">            
             <canvas id="myChart"></canvas>
@@ -37,18 +67,18 @@
       </div>
     </div>
     <script>
-        let exporteddata=drawchart();
-        setInterval(updatedata,5000);
-        function updatedata(){
-          exporteddata.typo.data.datasets.forEach((dataset) => {
-            exporteddata.typo.data.labels.push(new Date().toLocaleString('en-US', { hour: 'numeric',minute: 'numeric',second: 'numeric', hour12: true }));
-            dataset.data.push(Math.random()*55);
-          });
-          exporteddata.myNewChart.update();
-        }
-        function initialtime(){
-          return new Date().toLocaleString('en-US', { hour: 'numeric',minute: 'numeric',second: 'numeric', hour12: true });
-        }
+        
+        // setInterval(updatedata,5000);
+        // function updatedata(){
+        //   exporteddata.typo.data.datasets.forEach((dataset) => {
+        //     exporteddata.typo.data.labels.push(new Date().toLocaleString('en-US', { hour: 'numeric',minute: 'numeric',second: 'numeric', hour12: true }));
+        //     dataset.data.push(Math.random()*55);
+        //   });
+        //   exporteddata.myNewChart.update();
+        // }
+        // function initialtime(){
+        //   return new Date().toLocaleString('en-US', { hour: 'numeric',minute: 'numeric',second: 'numeric', hour12: true });
+        // }
 
         fetch("https://financialmodelingprep.com/api/v3/actives?apikey=f832d1c18d03df428691fd6acaeff058").then(function(response) {
           return response.json();
@@ -60,34 +90,72 @@
             if(element.changesPercentage.includes('+')){
               cls='btn-success';
             }
-            tr+="<tr onclick=renderChart('"+element.ticker+"')><td>"+element.companyName+"</td><td class="+cls+">"+element.changesPercentage+"</td><td><i class='fas fa-chart-area'></i></td><td>"+element.price+"</td></tr>"
+            tr+="<tr onclick=renderChart('"+element.ticker+"','"+cls+"')><td>"+element.companyName+"</td><td class="+cls+">"+element.changesPercentage+"</td><td><i class='fas fa-chart-area'></i></td><td>"+element.price+"</td></tr>"
           });
           document.getElementById("tblbody").innerHTML=tr;
         }).catch(function(e) {
           console.log("error occured.."+e);
         });
-        function renderChart(tickerdata){
+
+        function renderChart(tickerdata,cls){
           let tickerinfo=localStorage.getItem('ticker');
           localStorage.setItem('ticker',tickerdata);
           if(tickerinfo!=tickerdata){
-            exporteddata.typo.data.datasets.forEach((dataset) => {
-              dataset.label=tickerdata;
-              exporteddata.typo.data.labels.push(new Date().toLocaleString('en-US', { hour: 'numeric',minute: 'numeric',second: 'numeric', hour12: true }));
-              dataset.data.push(Math.random()*(Math.random()*45));
-            });
-            exporteddata.myNewChart.update();
+          //For getting historical data
+            fetch(`https://financialmodelingprep.com/api/v3/historical-price-full/${tickerdata}?apikey=f832d1c18d03df428691fd6acaeff058`).then(function(response) {
+            return response.json();
+          }).then(function(data) {
+            console.log(data);
+            let dataparser=_.orderBy(data.historical, ['date'], ['asc']);
+            manipulateData(dataparser,tickerdata,cls);
+          });
+
+          // for update chart data like realtime
+            // exporteddata.typo.data.datasets.forEach((dataset) => {
+            //   dataset.label=tickerdata;
+            //   exporteddata.typo.data.labels.push(new Date().toLocaleString('en-US', { hour: 'numeric',minute: 'numeric',second: 'numeric', hour12: true }));
+            //   dataset.data.push(Math.random()*(Math.random()*45));
+            // });
+            // exporteddata.myNewChart.update();
           }
         }
-        function drawchart(){
+        function manipulateData(data,symb,cls){
+          //Filteration logic
+          let mval=document.getElementById("month").value;
+          let yval=document.getElementById("year").value;
+
+          // let byDateGroup=_.groupBy(data, 'date');
+          // let keys=Object.keys(byDateGroup);
+          var filteredResult=[];
+          data.filter((dta,idx,full)=>{
+            let dtaMonth=new Date(dta.date).getMonth();
+            let dtaYear=new Date(dta.date).getFullYear();
+            if(dtaMonth==mval && dtaYear==yval){
+              filteredResult.push(dta);
+            }
+            if(idx==(data.length-1)){
+              //Filteration logic
+              let byDateLabel=_.map(filteredResult, 'date');
+              let closePrices=_.map(filteredResult, 'close');
+              drawchart(byDateLabel,cls,closePrices,symb)
+            }
+          });
+          
+          //Filteration logic
+          // let byDateLabel=_.map(data, 'date');
+          // let closePrices=_.map(data, 'close');
+          // drawchart(byDateLabel,cls,closePrices,symb)
+        }
+        function drawchart(labelsdata,cls,data,mainlabel){
           var data = {
-            labels: [initialtime(),initialtime(),initialtime(),initialtime(),initialtime()],
+            labels: labelsdata,
             datasets: [
                 {
-                    label: "BRK-A",
+                    label: mainlabel,
                     fill: false,
-                    borderColor: '#FF0000',
-                    backgroundColor: '#FF0000',
-                    data: <%= chartData %>
+                    borderColor: (cls!='btn-success')?'#FF0000':'#28a745',
+                    backgroundColor: (cls!='btn-success')?'#FF0000':'#28a745',
+                    data: data
                 }
             ]
         };
@@ -96,6 +164,17 @@
         var typo={type: 'line',data: data}
         var myNewChart = new Chart(ctx,typo);
         return {typo,myNewChart};
+        }
+        function FilterData(){
+          let tickerdata=localStorage.getItem('ticker');
+          //For getting Filtered historical data
+          fetch(`https://financialmodelingprep.com/api/v3/historical-price-full/${tickerdata}?apikey=f832d1c18d03df428691fd6acaeff058`).then(function(response) {
+            return response.json();
+          }).then(function(data) {
+            console.log(data);
+            let dataparser=_.orderBy(data.historical, ['date'], ['asc']);
+            manipulateData(dataparser,tickerdata,'');
+          });
         }
     </script>
   </body>
